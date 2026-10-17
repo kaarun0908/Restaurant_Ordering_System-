@@ -1,0 +1,77 @@
+
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Foodies{% endblock %}
+
+{% block content %}
+<section class="container" style="padding: 30px 0;">
+
+    <h1>Admin Dashboard</h1>
+    <p>Manage and monitor customer orders.</p>
+
+    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin: 25px 0;">
+
+        <div class="food-card" style="padding: 20px; flex: 1; min-width: 180px;">
+            <h3>Total Orders</h3>
+            <h2>{{ total_orders }}</h2>
+        </div>
+
+        <div class="food-card" style="padding: 20px; flex: 1; min-width: 180px;">
+            <h3>Total Order Value</h3>
+            <h2>₹{{ "%.2f"|format(total_revenue) }}</h2>
+        </div>
+
+        <div class="food-card" style="padding: 20px; flex: 1; min-width: 180px;">
+            <h3>Orders Awaiting Processing</h3>
+            <h2>{{ pending_orders }}</h2>
+        </div>
+
+    </div>
+
+    <h2>Customer Orders</h2>
+
+    {% if orders %}
+        {% for order in orders %}
+            <div class="food-card" style="padding: 20px; margin: 20px 0;">
+
+                <h3>Order #{{ order["id"] }}</h3>
+
+                <p><strong>Customer:</strong> {{ order["customer_name"] }}</p>
+
+                <p>
+                    <strong>Email:</strong>
+                    {{ order["customer_email"] }}
+                </p>
+
+                <p><strong>Phone:</strong> {{ order["phone"] }}</p>
+
+                <p>
+                    <strong>Delivery Address:</strong>
+                    {{ order["address"] }}
+                </p>
+
+                <p><strong>Date:</strong> {{ order["created_at"] }}</p>
+
+                <p><strong>Status:</strong> {{ order["status"] }}</p>
+
+                <h4>Items</h4>
+
+                {% for item in order_items[order["id"]] %}
+                    <p>
+                        {{ item["food_name"] }} —
+                        ₹{{ item["price"] }} × {{ item["quantity"] }}
+                    </p>
+                {% endfor %}
+
+                <h3>Total: ₹{{ "%.2f"|format(order["total"]) }}</h3>
+
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No customer orders have been placed yet.</p>
+    {% endif %}
+
+    <a href="{{ url_for('home') }}">Back to Home</a>
+
+</section>
+{% endblock %}

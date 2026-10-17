@@ -46,6 +46,9 @@
 
         {% if current_user %}
             <a href="{{ url_for('cart') }}">Cart</a>
+
+            <a href="{{ url_for('order_history') }}">Order History</a>
+
             <span class="welcome-user">Hi, {{ current_user }}</span>
 
             <form action="{{ url_for('logout') }}" method="post">

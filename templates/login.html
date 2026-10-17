@@ -1,19 +1,53 @@
 
 {% extends "base.html" %}
 
+{% block title %}Login - Foodies{% endblock %}
+
 {% block content %}
 
 <section class="auth-section">
     <div class="auth-card">
+
         <div class="auth-icon">🍕</div>
 
         <span class="section-label">WELCOME BACK</span>
-        <h1>Login to Foodies</h1>
-        <p class="auth-description">
+        <h1 id="loginHeading">Customer Login</h1>
+
+        <p class="auth-description" id="loginDescription">
             Sign in to order your favourite food.
         </p>
 
+        <!-- Login type selection -->
+        <div style="display: flex; gap: 10px; margin: 20px 0;">
+
+            <button
+                type="button"
+                id="customerTab"
+                class="btn btn-primary"
+                style="flex: 1;"
+                onclick="selectLogin('customer')">
+                Customer Login
+            </button>
+
+            <button
+                type="button"
+                id="adminTab"
+                class="btn"
+                style="flex: 1;"
+                onclick="selectLogin('admin')">
+                Admin Login
+            </button>
+
+        </div>
+
         <form action="{{ url_for('login') }}" method="POST" class="auth-form">
+
+            <input
+                type="hidden"
+                name="login_type"
+                id="loginType"
+                value="customer">
+
             <div class="form-group">
                 <label for="email">Email Address</label>
                 <input
@@ -36,12 +70,16 @@
                     autocomplete="current-password">
             </div>
 
-            <button type="submit" class="btn btn-primary auth-submit">
-                Login
+            <button
+                type="submit"
+                class="btn btn-primary auth-submit"
+                id="loginButton">
+                Login as Customer
             </button>
+
         </form>
 
-        <p class="auth-footer">
+        <p class="auth-footer" id="registerLink">
             Don't have an account?
             <a href="{{ url_for('register') }}">Create an account</a>
         </p>
@@ -49,7 +87,36 @@
         <a href="{{ url_for('menu') }}" class="back-link">
             ← Continue browsing the menu
         </a>
+
     </div>
 </section>
+
+<script>
+function selectLogin(type) {
+    const isAdmin = type === "admin";
+
+    document.getElementById("loginType").value = type;
+
+    document.getElementById("loginHeading").textContent =
+        isAdmin ? "Admin Login" : "Customer Login";
+
+    document.getElementById("loginDescription").textContent =
+        isAdmin
+            ? "Sign in to manage customer orders."
+            : "Sign in to order your favourite food.";
+
+    document.getElementById("loginButton").textContent =
+        isAdmin ? "Login as Admin" : "Login as Customer";
+
+    document.getElementById("customerTab").style.opacity =
+        isAdmin ? "0.65" : "1";
+
+    document.getElementById("adminTab").style.opacity =
+        isAdmin ? "1" : "0.65";
+
+    document.getElementById("registerLink").style.display =
+        isAdmin ? "none" : "block";
+}
+</script>
 
 {% endblock %}

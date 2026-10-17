@@ -4,103 +4,227 @@
 {% block content %}
 
 <section class="menu-page">
+
+    <!-- Page Header -->
     <div class="menu-header">
         <span class="section-label">FIND YOUR FAVOURITE</span>
         <h1>Our Menu</h1>
         <p>Fresh flavours, delicious meals, and something for everyone.</p>
     </div>
 
+    <!-- Search Food -->
     <form action="{{ url_for('menu') }}" method="GET" class="menu-search">
+
         <input
             type="text"
             name="q"
-            placeholder="Search for food..."
-            value="{{ request.args.get('q', '') }}">
-        <button type="submit" class="btn btn-primary">Search</button>
+            placeholder="Search food by name or description..."
+            value="{{ search|default('') }}">
+
+        {% if category %}
+        <input type="hidden" name="category" value="{{ category }}">
+        {% endif %}
+
+        {% if sort_by and sort_by != 'default' %}
+        <input type="hidden" name="sort" value="{{ sort_by }}">
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary">
+            Search
+        </button>
+
     </form>
 
+    <!-- Food Categories -->
     <div class="menu-categories">
-        <a href="{{ url_for('menu') }}"
+
+        <a href="{{ url_for('menu', q=search, sort=sort_by) }}"
            class="category-filter {% if not category %}active{% endif %}">
             All Items
         </a>
 
-        <a href="{{ url_for('menu', category='Pizza') }}"
+        <a href="{{ url_for('menu', category='Biryani', q=search, sort=sort_by) }}"
+           class="category-filter {% if category == 'Biryani' %}active{% endif %}">
+            Biryani
+        </a>
+
+        <a href="{{ url_for('menu', category='Pizza', q=search, sort=sort_by) }}"
            class="category-filter {% if category == 'Pizza' %}active{% endif %}">
             Pizza
         </a>
 
-        <a href="{{ url_for('menu', category='Burger') }}"
-           class="category-filter {% if category == 'Burger' %}active{% endif %}">
+        <a href="{{ url_for('menu', category='Burgers', q=search, sort=sort_by) }}"
+           class="category-filter {% if category == 'Burgers' %}active{% endif %}">
             Burgers
         </a>
 
-        <a href="{{ url_for('menu', category='Indian') }}"
-           class="category-filter {% if category == 'Indian' %}active{% endif %}">
-            Indian
+        <a href="{{ url_for('menu', category='South Indian', q=search, sort=sort_by) }}"
+           class="category-filter {% if category == 'South Indian' %}active{% endif %}">
+            South Indian
         </a>
 
-        <a href="{{ url_for('menu', category='Dessert') }}"
-           class="category-filter {% if category == 'Dessert' %}active{% endif %}">
+        <a href="{{ url_for('menu', category='Wraps', q=search, sort=sort_by) }}"
+           class="category-filter {% if category == 'Wraps' %}active{% endif %}">
+            Wraps
+        </a>
+
+        <a href="{{ url_for('menu', category='Chinese', q=search, sort=sort_by) }}"
+           class="category-filter {% if category == 'Chinese' %}active{% endif %}">
+            Chinese
+        </a>
+
+        <a href="{{ url_for('menu', category='Desserts', q=search, sort=sort_by) }}"
+           class="category-filter {% if category == 'Desserts' %}active{% endif %}">
             Desserts
         </a>
+
+        <a href="{{ url_for('menu', category='Starters', q=search, sort=sort_by) }}"
+           class="category-filter {% if category == 'Starters' %}active{% endif %}">
+            Starters
+        </a>
+
     </div>
 
+    <!-- Sorting Options -->
+    <form action="{{ url_for('menu') }}" method="GET" class="sort-form">
+
+        {% if category %}
+        <input type="hidden" name="category" value="{{ category }}">
+        {% endif %}
+
+        {% if search %}
+        <input type="hidden" name="q" value="{{ search }}">
+        {% endif %}
+
+        <label for="sort">Sort by:</label>
+
+        <select id="sort" name="sort" onchange="this.form.submit()">
+
+            <option value="default"
+                {% if sort_by == 'default' %}selected{% endif %}>
+                Recommended
+            </option>
+
+            <option value="price_low"
+                {% if sort_by == 'price_low' %}selected{% endif %}>
+                Price: Low to High
+            </option>
+
+            <option value="price_high"
+                {% if sort_by == 'price_high' %}selected{% endif %}>
+                Price: High to Low
+            </option>
+
+            <option value="rating"
+                {% if sort_by == 'rating' %}selected{% endif %}>
+                Highest Rated
+            </option>
+
+        </select>
+
+    </form>
+
+    <!-- Results Heading -->
     <div class="menu-results">
-        <h2>
-            {% if category %}
-                {{ category }} Food
-            {% elif request.args.get('q') %}
-                Search Results
-            {% else %}
-                All Delicious Food
-            {% endif %}
-        </h2>
 
-        <p>{{ foods|length }} item(s) available</p>
+        <div>
+            <h2>
+                {% if category %}
+                    {{ category }} Food
+                {% elif search %}
+                    Search Results
+                {% else %}
+                    All Delicious Food
+                {% endif %}
+            </h2>
+
+            <p>
+                {{ foods|length }}
+                item(s) available
+
+                {% if search %}
+                    for "{{ search }}"
+                {% endif %}
+            </p>
+        </div>
+
     </div>
 
+    <!-- Food Items -->
     <div class="food-grid">
+
         {% for food in foods %}
+
         <article class="food-card">
+
             <a href="{{ url_for('menu') }}" class="food-image">
-                <img src="{{ food.image }}" alt="{{ food.name }}">
-                <span class="food-category">{{ food.category }}</span>
+                <img
+                    src="{{ food.image }}"
+                    alt="{{ food.name }}"
+                    loading="lazy">
+
+                <span class="food-category">
+                    {{ food.category }}
+                </span>
             </a>
 
             <div class="food-info">
+
                 <div class="food-title-row">
                     <h3>{{ food.name }}</h3>
-                    <span class="food-rating">★ {{ food.rating }}</span>
+
+                    <span class="food-rating">
+                        ★ {{ food.rating }}
+                    </span>
                 </div>
 
                 <p>{{ food.description }}</p>
 
                 <div class="food-bottom">
+
                     <span class="food-price">
                         ₹{{ "%.2f"|format(food.price) }}
                     </span>
 
-                    <form action="{{ url_for('add_to_cart', food_id=food.id) }}"
-                          method="POST">
+                    <form
+                        action="{{ url_for('add_to_cart', food_id=food.id) }}"
+                        method="POST">
+
                         <button type="submit" class="add-button">
                             + Add
                         </button>
+
                     </form>
+
                 </div>
+
             </div>
+
         </article>
+
         {% else %}
+
+        <!-- No Results -->
         <div class="empty-state">
+
             <div class="empty-icon">🍽️</div>
+
             <h3>No food items found</h3>
-            <p>Try another category or search for something else.</p>
+
+            <p>
+                Try a different search term or choose another category.
+            </p>
+
             <a href="{{ url_for('menu') }}" class="btn btn-primary">
                 View All Food
             </a>
+
         </div>
+
         {% endfor %}
+
     </div>
+
 </section>
 
 {% endblock %}
