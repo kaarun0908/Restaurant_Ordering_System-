@@ -1,0 +1,55 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="auth-section">
+    <div class="auth-card">
+        <div class="auth-icon">🍕</div>
+
+        <span class="section-label">WELCOME BACK</span>
+        <h1>Login to Foodies</h1>
+        <p class="auth-description">
+            Sign in to order your favourite food.
+        </p>
+
+        <form action="{{ url_for('login') }}" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    required
+                    autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                    autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary auth-submit">
+                Login
+            </button>
+        </form>
+
+        <p class="auth-footer">
+            Don't have an account?
+            <a href="{{ url_for('register') }}">Create an account</a>
+        </p>
+
+        <a href="{{ url_for('menu') }}" class="back-link">
+            ← Continue browsing the menu
+        </a>
+    </div>
+</section>
+
+{% endblock %}

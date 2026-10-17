@@ -1,0 +1,99 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="checkout-page">
+    <div class="page-heading">
+        <span class="section-label">ALMOST THERE</span>
+        <h1>Checkout</h1>
+        <p>Enter your delivery details to place your order.</p>
+    </div>
+
+    {% if items %}
+    <div class="checkout-layout">
+
+        <div class="checkout-form-card">
+            <h2>Delivery Information</h2>
+
+            <form action="{{ url_for('checkout') }}" method="POST"
+                  class="auth-form">
+
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name"
+                           placeholder="Enter your full name"
+                           required autocomplete="name">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone"
+                           placeholder="Enter your 10-digit phone number"
+                           pattern="[0-9]{10}"
+                           title="Enter a 10-digit phone number"
+                           required autocomplete="tel">
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Delivery Address</label>
+                    <textarea id="address" name="address" rows="4"
+                              placeholder="Enter your complete delivery address"
+                              required autocomplete="street-address"></textarea>
+                </div>
+
+                <div class="payment-notice">
+                    <span>💵</span>
+                    <div>
+                        <strong>Cash on Delivery</strong>
+                        <p>Pay when your food arrives.</p>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary auth-submit">
+                    Place Order - ₹{{ "%.2f"|format(total) }}
+                </button>
+            </form>
+
+            <a href="{{ url_for('cart') }}" class="continue-shopping">
+                ← Back to Cart
+            </a>
+        </div>
+
+        <aside class="cart-summary">
+            <h2>Your Order</h2>
+
+            {% for item in items %}
+            <div class="summary-row">
+                <span>{{ item.name }} × {{ item.quantity }}</span>
+                <span>₹{{ "%.2f"|format(item.subtotal) }}</span>
+            </div>
+            {% endfor %}
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-row">
+                <span>Delivery Fee</span>
+                <span>Free</span>
+            </div>
+
+            <div class="summary-row summary-total">
+                <strong>Total</strong>
+                <strong>₹{{ "%.2f"|format(total) }}</strong>
+            </div>
+        </aside>
+
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <h2>Your cart is empty</h2>
+        <p>Add some food before proceeding to checkout.</p>
+        <a href="{{ url_for('menu') }}" class="btn btn-primary">
+            Explore Menu
+        </a>
+    </div>
+    {% endif %}
+</section>
+
+{% endblock %}

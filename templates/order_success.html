@@ -1,0 +1,66 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="success-page">
+    <div class="success-card">
+        <div class="success-icon">✓</div>
+
+        <span class="section-label">ORDER CONFIRMED</span>
+        <h1>Thank you for your order!</h1>
+
+        <p class="success-message">
+            Your order has been placed successfully. Get ready for something delicious!
+        </p>
+
+        <div class="order-number">
+            <span>Order Number</span>
+            <strong>#{{ order.id }}</strong>
+        </div>
+
+        <div class="order-status">
+            <span class="status-dot"></span>
+            <span>{{ order.status }}</span>
+        </div>
+
+        <div class="success-divider"></div>
+
+        <h2>Order Summary</h2>
+
+        <div class="success-items">
+            {% for item in items %}
+            <div class="summary-row">
+                <span>{{ item.food_name }} × {{ item.quantity }}</span>
+                <span>₹{{ "%.2f"|format(item.price * item.quantity) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="summary-divider"></div>
+
+        <div class="summary-row summary-total">
+            <strong>Total Paid on Delivery</strong>
+            <strong>₹{{ "%.2f"|format(order.total) }}</strong>
+        </div>
+
+        <div class="delivery-details">
+            <h3>Delivery Details</h3>
+            <p><strong>Name:</strong> {{ order.customer_name }}</p>
+            <p><strong>Phone:</strong> {{ order.phone }}</p>
+            <p><strong>Address:</strong> {{ order.address }}</p>
+        </div>
+
+        <div class="success-actions">
+            <a href="{{ url_for('menu') }}" class="btn btn-primary">
+                Order More Food
+            </a>
+
+            <a href="{{ url_for('home') }}" class="btn btn-outline">
+                Back to Home
+            </a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
