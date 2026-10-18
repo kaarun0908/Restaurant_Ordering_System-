@@ -1,0 +1,139 @@
+
+{% extends "base.html" %}
+
+{% block title %}Reviews - {{ food.name }} - Foodies{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width:850px; margin:40px auto;">
+
+    <a href="{{ url_for('menu') }}">← Back to Menu</a>
+
+    <!-- Food Details -->
+    <div class="food-card" style="padding:24px; margin:20px 0;">
+        <h1>{{ food.name }}</h1>
+
+        <p>{{ food.description }}</p>
+
+        <p>
+            <strong>Price:</strong> ₹{{ food.price }}
+        </p>
+
+        {% if average_rating is not none %}
+            <h2>⭐ {{ average_rating }} / 5</h2>
+
+            <p>
+                Based on {{ review_count }}
+                customer review{% if review_count != 1 %}s{% endif %}.
+            </p>
+        {% else %}
+            <p>No customer reviews yet. Be the first to review!</p>
+        {% endif %}
+    </div>
+
+    <!-- Write a Review -->
+    <div class="food-card" style="padding:24px; margin-bottom:24px;">
+        <h2>Write a Review</h2>
+
+        {% if purchased %}
+
+            <p>You can rate this food from 1 to 5 stars.</p>
+
+            <form method="POST"
+                  action="{{ url_for('food_reviews', food_id=food.id) }}"
+                  class="auth-form">
+
+                <div class="form-group">
+                    <label for="rating">Your Rating</label>
+
+                    <select id="rating" name="rating" required>
+                        <option value="">Select a rating</option>
+
+                        {% for number in range(5, 0, -1) %}
+                            <option value="{{ number }}"
+                                {% if existing_review and existing_review["rating"] == number %}
+                                    selected
+                                {% endif %}>
+                                {{ number }} Star{% if number != 1 %}s{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="comment">Your Review</label>
+
+                    <textarea
+                        id="comment"
+                        name="comment"
+                        rows="4"
+                        maxlength="1000"
+                        placeholder="Tell us about your experience..."
+                        required>{% if existing_review %}{{ existing_review["comment"] }}{% endif %}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    {% if existing_review %}
+                        Update Review
+                    {% else %}
+                        Submit Review
+                    {% endif %}
+                </button>
+
+            </form>
+
+            {% if existing_review %}
+                <p>
+                    You have already reviewed this food.
+                    Submitting again will update your review.
+                </p>
+            {% endif %}
+
+        {% else %}
+
+            <p>You can submit a review after ordering this food.</p>
+
+            <a href="{{ url_for('menu') }}" class="btn btn-primary">
+                Browse Menu
+            </a>
+
+        {% endif %}
+    </div>
+
+    <!-- Customer Reviews -->
+    <h2>Customer Reviews</h2>
+
+    {% if reviews %}
+
+        {% for review in reviews %}
+
+            <div class="food-card"
+                 style="padding:20px; margin:16px 0;">
+
+                <h3>{{ review["customer_name"] }}</h3>
+
+                <p>
+                    <strong>Rating:</strong>
+
+                    {% for star in range(review["rating"]) %}
+                        ⭐
+                    {% endfor %}
+
+                    ({{ review["rating"] }}/5)
+                </p>
+
+                <p>{{ review["comment"] }}</p>
+
+                <small>{{ review["created_at"] }}</small>
+
+            </div>
+
+        {% endfor %}
+
+    {% else %}
+
+        <p>No reviews have been submitted for this food yet.</p>
+
+    {% endif %}
+
+</section>
+{% endblock %}

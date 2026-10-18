@@ -1,0 +1,40 @@
+
+{% extends "base.html" %}
+{% block title %}Simulated Payment - Foodies{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width:600px; margin:40px auto;">
+    <div class="food-card" style="padding:30px; text-align:center;">
+        <div style="font-size:48px;">💳</div>
+        <h1>Simulated Payment</h1>
+        <p>This is a demo payment page.</p>
+
+        <h2>Amount: ₹{{ "%.2f"|format(total) }}</h2>
+
+        <p style="color:#777;">
+            No real payment will be processed.
+        </p>
+
+        <form method="POST"
+              action="{{ url_for('simulate_payment') }}"
+              style="margin:20px 0;">
+            <input type="hidden" name="result" value="success">
+            <button type="submit" class="btn btn-primary">
+                Simulate Successful Payment
+            </button>
+        </form>
+
+        <form method="POST"
+              action="{{ url_for('simulate_payment') }}">
+            <input type="hidden" name="result" value="failure">
+            <button type="submit" class="btn">
+                Simulate Failed Payment
+            </button>
+        </form>
+
+        <p>
+            <a href="{{ url_for('checkout') }}">Return to Checkout</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

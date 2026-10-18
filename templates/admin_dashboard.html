@@ -6,64 +6,200 @@
 {% block content %}
 <section class="container" style="padding: 30px 0;">
 
+    <!-- Dashboard Header -->
     <h1>Admin Dashboard</h1>
-    <p>Manage and monitor customer orders.</p>
+    <p>Manage orders, monitor sales, and view Foodies reports.</p>
 
-    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin: 25px 0;">
+    <!-- Summary Cards -->
+    <div style="display:flex; gap:20px; flex-wrap:wrap; margin:25px 0;">
 
-        <div class="food-card" style="padding: 20px; flex: 1; min-width: 180px;">
+        <div class="food-card" style="padding:20px; flex:1; min-width:180px;">
             <h3>Total Orders</h3>
             <h2>{{ total_orders }}</h2>
         </div>
 
-        <div class="food-card" style="padding: 20px; flex: 1; min-width: 180px;">
+        <div class="food-card" style="padding:20px; flex:1; min-width:180px;">
             <h3>Total Order Value</h3>
             <h2>₹{{ "%.2f"|format(total_revenue) }}</h2>
         </div>
 
-        <div class="food-card" style="padding: 20px; flex: 1; min-width: 180px;">
+        <div class="food-card" style="padding:20px; flex:1; min-width:180px;">
             <h3>Orders Awaiting Processing</h3>
             <h2>{{ pending_orders }}</h2>
         </div>
 
+        <div class="food-card" style="padding:20px; flex:1; min-width:180px;">
+            <h3>Total Customers</h3>
+            <h2>{{ total_customers }}</h2>
+        </div>
+
+        <div class="food-card" style="padding:20px; flex:1; min-width:180px;">
+            <h3>Total Reviews</h3>
+            <h2>{{ total_reviews }}</h2>
+        </div>
+
+        <div class="food-card" style="padding:20px; flex:1; min-width:180px;">
+            <h3>Average Customer Rating</h3>
+            <h2>
+                {% if average_customer_rating is not none %}
+                    ⭐ {{ average_customer_rating }} / 5
+                {% else %}
+                    No ratings yet
+                {% endif %}
+            </h2>
+        </div>
+
     </div>
 
+    <!-- Seven-Day Sales Report -->
+    <div class="food-card" style="padding:20px; margin:25px 0;">
+        <h2>Sales Report - Last 7 Days</h2>
+        <p>Daily order value and number of orders.</p>
+
+        {% if daily_sales %}
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th style="padding:12px; text-align:left;">Date</th>
+                            <th style="padding:12px; text-align:left;">Orders</th>
+                            <th style="padding:12px; text-align:left;">Sales</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for day in daily_sales %}
+                            <tr>
+                                <td style="padding:12px;">
+                                    {{ day["date"] }}
+                                </td>
+                                <td style="padding:12px;">
+                                    {{ day["order_count"] }}
+                                </td>
+                                <td style="padding:12px;">
+                                    ₹{{ "%.2f"|format(day["revenue"]) }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>No sales data available yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Order Status Summary -->
+    <div class="food-card" style="padding:20px; margin:25px 0;">
+        <h2>Order Status Summary</h2>
+
+        {% if status_summary %}
+            {% for status, count in status_summary.items() %}
+                <div style="display:flex; justify-content:space-between;
+                            gap:15px; padding:10px 0;
+                            border-bottom:1px solid #ddd;">
+                    <span>{{ status }}</span>
+                    <strong>{{ count }}</strong>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No order status information available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Popular Food Items -->
+    <div class="food-card" style="padding:20px; margin:25px 0;">
+        <h2>Top 5 Popular Food Items</h2>
+
+        {% if popular_foods %}
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th style="padding:12px; text-align:left;">Rank</th>
+                            <th style="padding:12px; text-align:left;">Food Item</th>
+                            <th style="padding:12px; text-align:left;">Quantity Sold</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for food in popular_foods %}
+                            <tr>
+                                <td style="padding:12px;">{{ loop.index }}</td>
+                                <td style="padding:12px;">{{ food["food_name"] }}</td>
+                                <td style="padding:12px;">{{ food["quantity_sold"] }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>No food sales data available yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Customer Orders -->
     <h2>Customer Orders</h2>
 
     {% if orders %}
         {% for order in orders %}
-            <div class="food-card" style="padding: 20px; margin: 20px 0;">
+            <div class="food-card" style="padding:20px; margin:20px 0;">
 
                 <h3>Order #{{ order["id"] }}</h3>
 
-                <p><strong>Customer:</strong> {{ order["customer_name"] }}</p>
+                <p>
+                    <strong>Customer:</strong>
+                    {{ order["customer_name"] }}
+                </p>
 
                 <p>
                     <strong>Email:</strong>
                     {{ order["customer_email"] }}
                 </p>
 
-                <p><strong>Phone:</strong> {{ order["phone"] }}</p>
+                <p>
+                    <strong>Phone:</strong>
+                    {{ order["phone"] }}
+                </p>
 
                 <p>
                     <strong>Delivery Address:</strong>
                     {{ order["address"] }}
                 </p>
 
-                <p><strong>Date:</strong> {{ order["created_at"] }}</p>
+                <p>
+                    <strong>Date:</strong>
+                    {{ order["created_at"] }}
+                </p>
 
-                <p><strong>Status:</strong> {{ order["status"] }}</p>
+                <p>
+                    <strong>Status:</strong>
+                    {{ order["status"] }}
+                </p>
+
+                <p>
+                    <strong>Payment Method:</strong>
+                    {{ order["payment_method"] }}
+                </p>
+
+                <p>
+                    <strong>Payment Status:</strong>
+                    {{ order["payment_status"] }}
+                </p>
 
                 <h4>Items</h4>
 
                 {% for item in order_items[order["id"]] %}
                     <p>
                         {{ item["food_name"] }} —
-                        ₹{{ item["price"] }} × {{ item["quantity"] }}
+                        ₹{{ "%.2f"|format(item["price"]) }}
+                        × {{ item["quantity"] }}
                     </p>
                 {% endfor %}
 
-                <h3>Total: ₹{{ "%.2f"|format(order["total"]) }}</h3>
+                <h3>
+                    Total: ₹{{ "%.2f"|format(order["total"]) }}
+                </h3>
 
             </div>
         {% endfor %}

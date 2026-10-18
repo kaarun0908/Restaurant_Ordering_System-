@@ -170,6 +170,7 @@
 
             <div class="food-info">
 
+                <!-- Food Name and Existing Rating -->
                 <div class="food-title-row">
                     <h3>{{ food.name }}</h3>
 
@@ -180,6 +181,28 @@
 
                 <p>{{ food.description }}</p>
 
+                <!-- Customer Reviews and Ratings -->
+                <div class="customer-reviews">
+
+                    <p>
+                        <strong>Customer Rating:</strong>
+                        ⭐ {{ food.average_rating }} / 5
+                    </p>
+
+                    <p>
+                        {{ food.review_count }}
+                        customer review{% if food.review_count != 1 %}s{% endif %}
+                    </p>
+
+                    <a
+                        href="{{ url_for('food_reviews', food_id=food.id) }}"
+                        class="btn">
+                        View Reviews / Write a Review
+                    </a>
+
+                </div>
+
+                <!-- Price and Add to Cart -->
                 <div class="food-bottom">
 
                     <span class="food-price">

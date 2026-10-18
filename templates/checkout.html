@@ -23,7 +23,8 @@
                     <label for="name">Full Name</label>
                     <input type="text" id="name" name="name"
                            placeholder="Enter your full name"
-                           required autocomplete="name">
+                           required maxlength="100"
+                           autocomplete="name">
                 </div>
 
                 <div class="form-group">
@@ -32,27 +33,59 @@
                            placeholder="Enter your 10-digit phone number"
                            pattern="[0-9]{10}"
                            title="Enter a 10-digit phone number"
-                           required autocomplete="tel">
+                           required maxlength="10"
+                           autocomplete="tel">
                 </div>
 
                 <div class="form-group">
                     <label for="address">Delivery Address</label>
                     <textarea id="address" name="address" rows="4"
                               placeholder="Enter your complete delivery address"
-                              required autocomplete="street-address"></textarea>
+                              required maxlength="500"
+                              autocomplete="street-address"></textarea>
                 </div>
 
-                <div class="payment-notice">
+                <h2>Payment Method</h2>
+
+                <label class="payment-notice"
+                       style="display:flex; align-items:center; gap:12px; cursor:pointer; margin-bottom:15px;">
+                    <input type="radio"
+                           name="payment_method"
+                           value="cod"
+                           checked
+                           required>
+
                     <span>💵</span>
+
                     <div>
                         <strong>Cash on Delivery</strong>
                         <p>Pay when your food arrives.</p>
                     </div>
-                </div>
+                </label>
+
+                <label class="payment-notice"
+                       style="display:flex; align-items:center; gap:12px; cursor:pointer; margin-bottom:20px;">
+                    <input type="radio"
+                           name="payment_method"
+                           value="simulated"
+                           required>
+
+                    <span>💳</span>
+
+                    <div>
+                        <strong>Simulated Online Payment</strong>
+                        <p>Try a demo payment with success and failure options.</p>
+                    </div>
+                </label>
+
+                <p style="font-size:13px; color:#777; margin-bottom:15px;">
+                    Demo payment only. No real money will be charged.
+                </p>
 
                 <button type="submit" class="btn btn-primary auth-submit">
-                    Place Order - ₹{{ "%.2f"|format(total) }}
+                    Continue - ₹{{ "%.2f"|format(total) }}
                 </button>
+
             </form>
 
             <a href="{{ url_for('cart') }}" class="continue-shopping">
@@ -84,11 +117,13 @@
         </aside>
 
     </div>
+
     {% else %}
     <div class="empty-state">
         <div class="empty-icon">🛒</div>
         <h2>Your cart is empty</h2>
         <p>Add some food before proceeding to checkout.</p>
+
         <a href="{{ url_for('menu') }}" class="btn btn-primary">
             Explore Menu
         </a>

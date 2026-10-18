@@ -20,8 +20,18 @@
                 </p>
 
                 <p>
-                    <strong>Status:</strong>
+                    <strong>Order Status:</strong>
                     {{ details["order"]["status"] }}
+                </p>
+
+                <p>
+                    <strong>Payment Method:</strong>
+                    {{ details["order"]["payment_method"] }}
+                </p>
+
+                <p>
+                    <strong>Payment Status:</strong>
+                    {{ details["order"]["payment_status"] }}
                 </p>
 
                 <h4>Items</h4>
@@ -34,7 +44,9 @@
                     </p>
                 {% endfor %}
 
-                <h3>Total: ₹{{ details["order"]["total"] }}</h3>
+                <h3>
+                    Total: ₹{{ "%.2f"|format(details["order"]["total"]|float) }}
+                </h3>
 
             </div>
         {% endfor %}

@@ -10,6 +10,7 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
 app = Flask(__name__)
 app.secret_key = os.environ.get(
     "FOODIES_SECRET_KEY", "foodies-v1-development-key"
@@ -80,7 +81,7 @@ def get_db():
     return connection
 
 
-# CREATE DATABASE TABLES
+# CREATE DATABASE TABLES AND MIGRATE EXISTING DATABASE
 
 def init_db():
     with get_db() as db:
@@ -116,6 +117,43 @@ def init_db():
                 quantity INTEGER NOT NULL,
                 FOREIGN KEY(order_id) REFERENCES orders(id)
                     ON DELETE CASCADE
+            )
+        """)
+
+        # Add payment columns without deleting existing orders.
+        order_columns = {
+            row["name"]
+            for row in db.execute(
+                "PRAGMA table_info(orders)"
+            ).fetchall()
+        }
+
+        if "payment_method" not in order_columns:
+            db.execute("""
+                ALTER TABLE orders
+                ADD COLUMN payment_method TEXT
+                NOT NULL DEFAULT 'Cash on Delivery'
+            """)
+
+        if "payment_status" not in order_columns:
+            db.execute("""
+                ALTER TABLE orders
+                ADD COLUMN payment_status TEXT
+                NOT NULL DEFAULT 'Pending'
+            """)
+
+        # V3: Customer reviews and ratings.
+        # Creates the table if it does not exist; existing data is preserved.
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS reviews (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                food_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                comment TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, food_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
 
@@ -308,7 +346,34 @@ def menu():
     search = request.args.get("q", "").strip()
     sort_by = request.args.get("sort", "default")
 
-    foods = FOODS.copy()
+    foods = [dict(food) for food in FOODS]
+
+    # Add real customer review averages and counts to each food item.
+    with get_db() as db:
+        review_rows = db.execute("""
+            SELECT food_id, AVG(rating) AS average_rating,
+                   COUNT(*) AS review_count
+            FROM reviews
+            GROUP BY food_id
+        """).fetchall()
+
+    review_summary = {
+        row["food_id"]: {
+            "average_rating": round(float(row["average_rating"]), 1),
+            "review_count": row["review_count"]
+        }
+        for row in review_rows
+    }
+
+    for food in foods:
+        summary = review_summary.get(food["id"])
+        if summary:
+            food["average_rating"] = summary["average_rating"]
+            food["review_count"] = summary["review_count"]
+        else:
+            # Keep the original sample rating until customers submit reviews.
+            food["average_rating"] = food["rating"]
+            food["review_count"] = 0
 
     if search:
         search_lower = search.lower()
@@ -336,7 +401,7 @@ def menu():
 
     elif sort_by == "rating":
         foods.sort(
-            key=lambda food: food["rating"],
+            key=lambda food: food["average_rating"],
             reverse=True
         )
 
@@ -346,6 +411,100 @@ def menu():
         category=category,
         search=search,
         sort_by=sort_by
+    )
+
+
+# CUSTOMER REVIEWS AND RATINGS
+
+@app.route("/food/<int:food_id>/reviews", methods=["GET", "POST"])
+@login_required
+def food_reviews(food_id):
+    food = next(
+        (item for item in FOODS if item["id"] == food_id),
+        None
+    )
+    if food is None:
+        abort(404)
+
+    with get_db() as db:
+        # A customer may review a food item only after ordering it.
+        purchased = db.execute("""
+            SELECT 1
+            FROM orders
+            JOIN order_items ON orders.id = order_items.order_id
+            WHERE orders.user_id = ? AND order_items.food_name = ?
+            LIMIT 1
+        """, (session["user_id"], food["name"])).fetchone()
+
+        if request.method == "POST":
+            if not purchased:
+                flash(
+                    "You can review this food only after ordering it.",
+                    "warning"
+                )
+                return redirect(url_for("food_reviews", food_id=food_id))
+
+            try:
+                rating = int(request.form.get("rating", "0"))
+            except (TypeError, ValueError):
+                rating = 0
+
+            comment = request.form.get("comment", "").strip()
+
+            if rating < 1 or rating > 5:
+                flash("Please select a rating from 1 to 5.", "danger")
+            elif not comment:
+                flash("Please enter your review.", "danger")
+            elif len(comment) > 1000:
+                flash("Your review must be 1000 characters or fewer.", "danger")
+            else:
+                db.execute("""
+                    INSERT INTO reviews (user_id, food_id, rating, comment)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user_id, food_id)
+                    DO UPDATE SET
+                        rating = excluded.rating,
+                        comment = excluded.comment,
+                        created_at = CURRENT_TIMESTAMP
+                """, (session["user_id"], food_id, rating, comment))
+                flash("Your review has been saved!", "success")
+                return redirect(url_for("food_reviews", food_id=food_id))
+
+        existing_review = db.execute("""
+            SELECT rating, comment
+            FROM reviews
+            WHERE user_id = ? AND food_id = ?
+        """, (session["user_id"], food_id)).fetchone()
+
+        reviews = db.execute("""
+            SELECT reviews.rating, reviews.comment, reviews.created_at,
+                   users.name AS customer_name
+            FROM reviews
+            JOIN users ON reviews.user_id = users.id
+            WHERE reviews.food_id = ?
+            ORDER BY reviews.created_at DESC, reviews.id DESC
+        """, (food_id,)).fetchall()
+
+        summary = db.execute("""
+            SELECT AVG(rating) AS average_rating, COUNT(*) AS review_count
+            FROM reviews
+            WHERE food_id = ?
+        """, (food_id,)).fetchone()
+
+    average_rating = (
+        round(float(summary["average_rating"]), 1)
+        if summary["average_rating"] is not None
+        else None
+    )
+
+    return render_template(
+        "reviews.html",
+        food=food,
+        reviews=reviews,
+        purchased=bool(purchased),
+        existing_review=existing_review,
+        average_rating=average_rating,
+        review_count=summary["review_count"]
     )
 
 
@@ -401,7 +560,7 @@ def update_cart(food_id):
     return redirect(url_for("cart"))
 
 
-# CHECKOUT
+# CHECKOUT WITH CASH ON DELIVERY OR SIMULATED PAYMENT
 
 @app.route("/checkout", methods=["GET", "POST"])
 @login_required
@@ -416,49 +575,140 @@ def checkout():
         name = request.form.get("name", "").strip()
         phone = request.form.get("phone", "").strip()
         address = request.form.get("address", "").strip()
+        payment_method = request.form.get(
+            "payment_method", "cod"
+        ).strip().lower()
 
         if not name or not phone or not address:
-            flash(
-                "Please fill in all delivery details.",
-                "danger"
+            flash("Please fill in all delivery details.", "danger")
+            return render_template(
+                "checkout.html", items=items, total=total
             )
-        else:
-            with get_db() as db:
-                cursor = db.execute("""
-                    INSERT INTO orders
-                    (user_id, customer_name, phone, address, total)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (
-                    session["user_id"],
-                    name,
-                    phone,
-                    address,
-                    total
-                ))
 
-                order_id = cursor.lastrowid
-
-                for item in items:
-                    db.execute("""
-                        INSERT INTO order_items
-                        (order_id, food_name, price, quantity)
-                        VALUES (?, ?, ?, ?)
-                    """, (
-                        order_id,
-                        item["name"],
-                        item["price"],
-                        item["quantity"]
-                    ))
-
-            session["cart"] = {}
-
-            return redirect(
-                url_for("order_success", order_id=order_id)
+        if payment_method not in ("cod", "simulated"):
+            flash("Please select a valid payment method.", "danger")
+            return render_template(
+                "checkout.html", items=items, total=total
             )
+
+        if payment_method == "simulated":
+            session["pending_payment"] = {
+                "user_id": session["user_id"],
+                "name": name,
+                "phone": phone,
+                "address": address,
+            }
+
+            return redirect(url_for("simulate_payment"))
+
+        return create_food_order(
+            name, phone, address, items,
+            payment_method="Cash on Delivery",
+            payment_status="Pending"
+        )
 
     return render_template(
-        "checkout.html",
-        items=items,
+        "checkout.html", items=items, total=total
+    )
+
+
+# SAVE ORDER AND ORDER ITEMS
+
+def create_food_order(
+    name, phone, address, items,
+    payment_method, payment_status
+):
+    total = sum(
+        item["price"] * item["quantity"]
+        for item in items
+    )
+
+    with get_db() as db:
+        cursor = db.execute("""
+            INSERT INTO orders (
+                user_id, customer_name, phone, address, total,
+                payment_method, payment_status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            session["user_id"], name, phone, address, total,
+            payment_method, payment_status
+        ))
+
+        order_id = cursor.lastrowid
+
+        for item in items:
+            db.execute("""
+                INSERT INTO order_items (
+                    order_id, food_name, price, quantity
+                )
+                VALUES (?, ?, ?, ?)
+            """, (
+                order_id, item["name"],
+                item["price"], item["quantity"]
+            ))
+
+
+    session["cart"] = {}
+    session.pop("pending_payment", None)
+
+    return redirect(
+        url_for("order_success", order_id=order_id)
+    )
+
+
+# SIMULATED PAYMENT PAGE
+
+@app.route("/simulate-payment", methods=["GET", "POST"])
+@login_required
+def simulate_payment():
+    payment = session.get("pending_payment")
+
+    if (
+        not payment
+        or payment.get("user_id") != session["user_id"]
+    ):
+        flash(
+            "Please start checkout before making a payment.",
+            "warning"
+        )
+        return redirect(url_for("checkout"))
+
+    items, total = get_cart()
+
+    if not items:
+        session.pop("pending_payment", None)
+        flash(
+            "Your cart is empty. Please add items again.",
+            "warning"
+        )
+        return redirect(url_for("menu"))
+
+    if request.method == "POST":
+        result = request.form.get("result", "")
+
+        if result == "success":
+            return create_food_order(
+                payment["name"],
+                payment["phone"],
+                payment["address"],
+                items,
+                payment_method="Simulated Online Payment",
+                payment_status="Paid (Simulated)"
+            )
+
+        if result == "failure":
+            session.pop("pending_payment", None)
+            return render_template(
+                "payment_result.html",
+                success=False
+            )
+
+        flash("Invalid payment selection.", "danger")
+
+    return render_template(
+        "payment.html",
+        payment=payment,
         total=total
     )
 
@@ -528,7 +778,7 @@ def order_history():
     )
 
 
-# ADMIN DASHBOARD
+# ADMIN DASHBOARD AND REPORTS
 
 @app.route("/admin")
 @admin_required
@@ -556,15 +806,98 @@ def admin_dashboard():
 
             order_items[order["id"]] = items
 
+        # Main dashboard metrics
         total_orders = len(orders)
-
-        total_revenue = sum(
-            float(order["total"]) for order in orders
-        )
+        total_revenue = sum(float(order["total"]) for order in orders)
 
         pending_orders = sum(
             1 for order in orders
             if order["status"] == "Order received"
+        )
+
+        total_customers = db.execute(
+            "SELECT COUNT(*) FROM users WHERE LOWER(email) != LOWER(?)",
+            (ADMIN_EMAIL,)
+        ).fetchone()[0]
+
+        # Count orders by status for the report summary.
+        status_rows = db.execute("""
+            SELECT COALESCE(status, 'Unknown') AS status,
+                   COUNT(*) AS order_count
+            FROM orders
+            GROUP BY COALESCE(status, 'Unknown')
+            ORDER BY order_count DESC, status
+        """).fetchall()
+        status_counts = [
+            {"status": row["status"], "count": row["order_count"]}
+            for row in status_rows
+        ]
+
+        # Most frequently ordered food items.
+        popular_rows = db.execute("""
+            SELECT food_name,
+                   SUM(quantity) AS quantity_sold,
+                   SUM(price * quantity) AS item_revenue
+            FROM order_items
+            GROUP BY food_name
+            ORDER BY quantity_sold DESC, item_revenue DESC, food_name
+            LIMIT 5
+        """).fetchall()
+        popular_items = [
+            {
+                "food_name": row["food_name"],
+                "quantity_sold": row["quantity_sold"],
+                "item_revenue": round(float(row["item_revenue"] or 0), 2)
+            }
+            for row in popular_rows
+        ]
+
+        # Revenue and order count for the last seven calendar days.
+        daily_rows = db.execute("""
+            SELECT DATE(created_at) AS sales_date,
+                   COUNT(*) AS order_count,
+                   SUM(total) AS revenue
+            FROM orders
+            WHERE DATE(created_at) >= DATE('now', '-6 days')
+            GROUP BY DATE(created_at)
+            ORDER BY sales_date
+        """).fetchall()
+
+        # Include dates with zero orders so the chart has a continuous range.
+        daily_lookup = {
+            row["sales_date"]: {
+                "orders": row["order_count"],
+                "revenue": round(float(row["revenue"] or 0), 2)
+            }
+            for row in daily_rows
+        }
+        daily_sales = []
+        for offset in range(6, -1, -1):
+            day_row = db.execute(
+                "SELECT DATE('now', ?) AS sales_date",
+                (f"-{offset} days",)
+            ).fetchone()
+            sales_date = day_row["sales_date"]
+            values = daily_lookup.get(
+                sales_date, {"orders": 0, "revenue": 0}
+            )
+            daily_sales.append({
+                "date": sales_date,
+                "orders": values["orders"],
+                "revenue": values["revenue"]
+            })
+
+        review_stats = db.execute("""
+            SELECT COUNT(*) AS review_count,
+                   AVG(rating) AS average_rating
+            FROM reviews
+        """).fetchone()
+
+        total_reviews = review_stats["review_count"]
+        average_customer_rating = (
+            round(float(review_stats["average_rating"]), 1)
+            if review_stats["average_rating"] is not None
+            else None
         )
 
     return render_template(
@@ -573,7 +906,13 @@ def admin_dashboard():
         order_items=order_items,
         total_orders=total_orders,
         total_revenue=total_revenue,
-        pending_orders=pending_orders
+        pending_orders=pending_orders,
+        total_customers=total_customers,
+        status_counts=status_counts,
+        popular_items=popular_items,
+        daily_sales=daily_sales,
+        total_reviews=total_reviews,
+        average_customer_rating=average_customer_rating
     )
 
 
